@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Redis Chat</title>
+        <style>
+
+            #zone_chat strong {
+                color: #365899;
+                padding: 2px;
+            }
+            #container{
+              display: inline-block;
+              width: 65%;
+            }
+            aside{
+              width: 25%;
+              display: inline-block;
+              position:relative;
+              vertical-align:top;
+              /*text-align: right;*/
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id='container'>
+          <h1>Chat Redis</h1>
+        <form action="/" method="post" id="formulaire_chat">
+            <input type="text" name="message" id="message" placeholder="Votre message..." size="50" autofocus />
+            <input type="submit" id="envoi_message" value="Envoyer" />
+        </form>
+
+        <section id="zone_chat">
+
+        </section>
+      </div>
+        <aside>
+          <h2>Utilisateurs connectés</h2>
+          <ul id='connected'>
+          </ul>
+        </aside>
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+
+            // Connexion à socket.io
+            var socket = io.connect('http://localhost:8080');
+
+            // On demande le pseudo, on l'envoie au serveur et on l'affiche dans le titre
+            initPseudo(true);
+
+
+            socket.on('pseudoExists',function(){
+              initPseudo(false);
+            })
+            // Quand on reçoit un message, on l'insère dans la page
+            socket.on('message', function(data) {
+                data = $.parseJSON(data);
+                insereMessage(data.pseudo,data.message)
+            })
+
+            socket.on('listePseudo',function(data){
+              var users=JSON.parse(data);
+              console.log(users);
+              $("#connected").empty();
+              for(var i=0;i<users.length;i++){
+                $("#connected").append('<li>'+users[i]+'</li>');
+              }
+
+            })
+
+            // Lorsqu'on envoie le formulaire, on transmet le message et on l'affiche sur la page
+            $('#formulaire_chat').submit(function () {
+                var message = $('#message').val();
+                socket.emit('message', message); // Transmet le message aux autres
+
+                $('#message').val('').focus(); // Vide la zone de Chat et remet le focus dessus
+                return false; // Permet de bloquer l'envoi "classique" du formulaire
+            });
+
+            function initPseudo(first){
+                  text = 'Ce pseudo est déja pris veuillez en choisir un autre'
+                if(first){
+                  text = 'Quel est votre pseudo ?'
+                }
+                var pseudo = prompt(text);
+                socket.emit('nouveau_client', pseudo);
+                document.title = pseudo + ' - Redis Chat';
+            };
+            // Ajoute un message dans la page
+            function insereMessage(pseudo, message) {
+                $('#zone_chat').prepend('<p><strong>'+ pseudo +' : </strong>'+ message + '</p>');
+            }
+        </script>
+    </body>
+</html>
